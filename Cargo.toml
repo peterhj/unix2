@@ -1,0 +1,9 @@
+[package]
+name = "unix2"
+version = "0.1.0-devel"
+edition = "2018"
+authors = ["Peter Jin"]
+license = "ISC OR MIT OR Apache-2.0"
+
+[dependencies]
+libc = { path = "../libc" }
