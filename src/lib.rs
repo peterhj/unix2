@@ -1,6 +1,9 @@
 extern crate libc;
 
 use std::io::{Error};
+use std::mem::{MaybeUninit, zeroed};
+use std::os::unix::io::{AsRawFd};
+use std::time::{Duration};
 
 pub fn set_gid(gid: u32) -> Result<(), Error> {
   unsafe {
@@ -30,5 +33,57 @@ pub fn umask(mode: u32) -> Result<u32, Error> {
   unsafe {
     let prev = libc::umask(mode);
     Ok(prev)
+  }
+}
+
+#[derive(Clone, Copy)]
+pub struct FdSet {
+  raw:  libc::fd_set,
+}
+
+impl Default for FdSet {
+  fn default() -> FdSet {
+    FdSet::new()
+  }
+}
+
+impl FdSet {
+  pub fn new() -> FdSet {
+    let mut raw = MaybeUninit::uninit();
+    unsafe {
+      libc::FD_ZERO(raw.as_mut_ptr());
+      FdSet{raw: raw.assume_init()}
+    }
+  }
+
+  pub fn insert<F: AsRawFd>(&mut self, fd: &F) {
+    let fd = fd.as_raw_fd();
+    unsafe {
+      libc::FD_SET(fd, &mut self.raw);
+    }
+  }
+}
+
+pub fn select_read_fd_timeout<F: AsRawFd>(fd: &F, timeout: Duration) -> Result<Option<()>, Error> {
+  let fd = fd.as_raw_fd();
+  let ub = fd + 1;
+  assert!(fd < ub);
+  let mut read = FdSet::new();
+  let mut write = FdSet::new();
+  let mut except = FdSet::new();
+  read.insert(fd);
+  unsafe {
+    let mut tval: libc::timeval = zeroed();
+    tval.tv_sec = timeout.as_secs();
+    tval.tv_usec = timeout.subsec_micros();
+    let res = libc::select(ub, &mut read, &mut write, &mut except, &mut tval);
+    if res < 0 {
+      return Err(Error::last_os_error());
+    }
+    if res == 0 {
+      Ok(None)
+    } else {
+      Ok(Some(()))
+    }
   }
 }
