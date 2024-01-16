@@ -3,7 +3,7 @@ extern crate libc;
 use std::convert::{TryInto};
 use std::io::{Error};
 use std::mem::{MaybeUninit, zeroed};
-use std::os::unix::io::{AsRawFd};
+use std::os::unix::io::{RawFd};
 use std::time::{Duration};
 
 pub fn set_gid(gid: u32) -> Result<(), Error> {
@@ -65,19 +65,12 @@ impl FdSet {
   }
 }
 
-pub fn select_read_fd_timeout<F: AsRawFd>(fd: &F, timeout: Duration) -> Result<Option<()>, Error> {
-  let mut read = FdSet::new();
-  let mut write = FdSet::new();
-  let mut except = FdSet::new();
-  read.insert(fd);
-  let fd = fd.as_raw_fd();
-  let ub = fd + 1;
-  assert!(fd < ub);
+pub fn select(end_fd: RawFd, read: &mut FdSet, write: &mut FdSet, except: &mut FdSet, timeout: Duration) -> Result<Option<()>, Error> {
   unsafe {
     let mut tval: libc::timeval = zeroed();
     tval.tv_sec = timeout.as_secs().try_into().unwrap();
     tval.tv_usec = timeout.subsec_micros().try_into().unwrap();
-    let res = libc::select(ub, &mut read.raw, &mut write.raw, &mut except.raw, &mut tval);
+    let res = libc::select(end_fd, &mut read.raw, &mut write.raw, &mut except.raw, &mut tval);
     if res < 0 {
       return Err(Error::last_os_error());
     }
