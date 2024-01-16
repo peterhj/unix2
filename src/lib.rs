@@ -3,7 +3,7 @@ extern crate libc;
 use std::convert::{TryInto};
 use std::io::{Error};
 use std::mem::{MaybeUninit, zeroed};
-use std::os::unix::io::{RawFd};
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::time::{Duration};
 
 pub fn set_gid(gid: u32) -> Result<(), Error> {
