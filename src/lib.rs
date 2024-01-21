@@ -6,6 +6,9 @@ use std::mem::{MaybeUninit, zeroed};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::time::{Duration};
 
+#[cfg(target_os = "linux")]
+pub mod epoll;
+
 pub fn set_gid(gid: u32) -> Result<(), Error> {
   unsafe {
     let res = libc::setgroups(1, &gid);
